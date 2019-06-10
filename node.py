@@ -75,4 +75,9 @@ class Node:
                         (not grid[self.x][self.y + 1].wall and not grid[self.x - 1][self.y].wall):
                     self.__neighbours.append(grid[self.x - 1][self.y + 1])
 
+        # Remove any neighbours that are walls
+        for node in self.__neighbours.copy():
+            if node.wall:
+                self.__neighbours.remove(node)
+
         return self.__neighbours
