@@ -5,10 +5,8 @@ from pygame.locals import SRCALPHA
 
 
 class Node:
-    DIAGONALS_ENABLED = True
-    DIAGONAL_WALL_CHECK = False
 
-    def __init__(self, x, y):
+    def __init__(self, x, y, wall_chance):
         self.x = x
         self.y = y
 
@@ -16,7 +14,7 @@ class Node:
         self.cost_to_node = 0  # "gScore"
         self.previous = None
 
-        self.wall = random() < 0.25
+        self.wall = random() < wall_chance
 
         self.__neighbours = None
 
@@ -30,15 +28,18 @@ class Node:
             return False
         return True
 
-    def show(self, width, height, color):
+    def show(self, width, height, color, circle):
         surface = pygame.Surface((width, height), SRCALPHA)
         if color is not None:
-            rect = pygame.Rect(0, 0, width / 2, height / 2)
-            rect.center = (width / 2, height / 2)
-            pygame.draw.ellipse(surface, color, rect)
+            if circle:
+                rect = pygame.Rect(0, 0, width / 2, height / 2)
+                rect.center = (width / 2, height / 2)
+                pygame.draw.ellipse(surface, color, rect)
+            else:
+                surface.fill(color)
         return surface, (width * self.x, height * self.y)
 
-    def neighbours(self, grid):
+    def neighbours(self, grid, allow_diagonal, diagonal_check):
         # Cache so we don't need to calc every time
         if self.__neighbours is not None:
             return self.__neighbours
@@ -58,25 +59,25 @@ class Node:
         if self.x > 0:
             self.__neighbours.append(grid[self.x - 1][self.y])
 
-        if Node.DIAGONALS_ENABLED:
+        if allow_diagonal:
             # Top left (if no top/left walls)
             if self.y > 0 and self.x > 0:
-                if not Node.DIAGONAL_WALL_CHECK or \
+                if not diagonal_check or \
                         (not grid[self.x][self.y - 1].wall and not grid[self.x - 1][self.y].wall):
                     self.__neighbours.append(grid[self.x - 1][self.y - 1])
             # Top right (if no top/right walls)
             if self.y > 0 and self.x + 1 < len(grid):
-                if not Node.DIAGONAL_WALL_CHECK or \
+                if not diagonal_check or \
                         (not grid[self.x][self.y - 1].wall and not grid[self.x + 1][self.y].wall):
                     self.__neighbours.append(grid[self.x + 1][self.y - 1])
             # Bottom right (if no bottom/right walls)
             if self.y + 1 < len(grid[0]) and self.x + 1 < len(grid):
-                if not Node.DIAGONAL_WALL_CHECK or \
+                if not diagonal_check or \
                         (not grid[self.x][self.y + 1].wall and not grid[self.x + 1][self.y].wall):
                     self.__neighbours.append(grid[self.x + 1][self.y + 1])
             # Bottom left (if no bottom/left walls)
             if self.y + 1 < len(grid[0]) and self.x > 0:
-                if not Node.DIAGONAL_WALL_CHECK or \
+                if not diagonal_check or \
                         (not grid[self.x][self.y + 1].wall and not grid[self.x - 1][self.y].wall):
                     self.__neighbours.append(grid[self.x - 1][self.y + 1])
 

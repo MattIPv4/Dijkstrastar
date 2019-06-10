@@ -1,114 +1,19 @@
-from copy import deepcopy
 from math import sqrt, pow
-from random import randint
 
 import pygame
-from pygame.locals import *
-
-from node import Node
-
-
-class Grid:
-
-    def __init__(self):
-        # Basic grid information
-        self.cols = 50
-        self.rows = 50
-        self.width = 20
-        self.height = 20
-        self.grid = None
-        self.start = None
-        self.end = None
-
-        # Pygame & loop control
-        pygame.init()
-        self.screen = pygame.display.set_mode((self.cols * self.width, self.rows * self.height))
-        self.running = False
-
-        # Searches
-        self.searches = [
-            Search(False, False, (0, 255, 255)),  # Dijkstra (cyan)
-            Search(False, True, (255, 0, 255))  # A* (magenta)
-        ]
-        self.reset()
-
-    def reset(self):
-        # Generate the grid of nodes
-        self.grid = [[Node(_x, _y) for _y in range(self.rows)] for _x in range(self.cols)]
-        self.get_start()
-        self.get_end()
-
-        # Give searches their data (use copies so they don't touch each other)
-        for search in self.searches:
-            search.reset(deepcopy(self.grid), deepcopy(self.start), deepcopy(self.end))
-
-    def get_start(self):
-        start_max_x = 0
-        start_max_y = 0
-        start_max_x = int((self.cols - 1) / 4)
-        start_max_y = int((self.rows - 1) / 4)
-        self.start = self.grid[randint(0, start_max_x)][randint(0, start_max_y)]
-        self.start.wall = False
-
-    def get_end(self):
-        end_min_x = self.cols - 1
-        end_min_y = self.rows - 1
-        end_min_x = int((self.cols - 1) / 4 * 3)
-        end_min_y = int((self.rows - 1) / 4 * 3)
-        self.end = self.grid[randint(end_min_x, self.cols - 1)][randint(end_min_y, self.rows - 1)]
-        self.end.wall = False
-
-    def draw(self):
-        # Handle pygame events
-        for event in pygame.event.get():
-            if event.type == KEYDOWN:
-                if event.key == K_ESCAPE:
-                    self.running = False
-                elif event.key == K_r:
-                    self.reset()
-                    return
-            elif event.type == QUIT:
-                self.running = False
-
-        # Do some drawing
-        self.screen.fill((200, 200, 200))
-
-        # Draw all the points
-        for col in self.grid:
-            for row in col:
-                color = None
-                if row.wall:
-                    color = (0, 0, 0)
-                if row == self.start:
-                    color = (0, 255, 0)
-                if row == self.end:
-                    color = (0, 0, 255)
-                self.screen.blit(*row.show(self.width, self.height, color))
-
-        # Allow searches to draw their paths
-        for search in self.searches:
-            search.draw(self.screen, self.width, self.height)
-
-        # Render
-        pygame.display.flip()
-
-    def run(self):
-        self.running = True
-        while self.running:
-            for search in self.searches:
-                search.search()
-            self.draw()
 
 
 class Search:
 
-    def __init__(self, show_dots, astar=True, line_color=None):
+    def __init__(self, show_dots, astar, line_color, nodes_as_circles, allow_diagonal_paths):
         # Grid data
         self.grid = None
         self.start = None
         self.end = None
         self.show_dots = show_dots
-        self.line_color = line_color
+        self.line_color = line_color  # Use None to use default colors
+        self.nodes_as_circles = nodes_as_circles
+        self.allow_diagonal_paths = allow_diagonal_paths
 
         # Searching data
         self.astar = astar
@@ -134,7 +39,7 @@ class Search:
         if not self.astar:
             return 0
         # If can go diagonally, use true distance
-        if Node.DIAGONALS_ENABLED:
+        if self.allow_diagonal_paths:
             return sqrt(pow(a.x - b.x, 2) + pow(a.y - b.y, 2))
         # Else, use the "manhattan" distance
         return abs(a.x - b.x) + abs(a.y - b.y)
@@ -164,7 +69,7 @@ class Search:
                     if row in path and not self.searching:
                         color = self.line_color or path_color
                     if color:
-                        surface.blit(*row.show(node_width, node_height, color))
+                        surface.blit(*row.show(node_width, node_height, color, self.nodes_as_circles))
 
         # Draw the path
         if len(path) > 1:
@@ -202,7 +107,7 @@ class Search:
         self.open.remove(node)
 
         # Explore all neighbours of the node
-        for neighbour in node.neighbours(self.grid):
+        for neighbour in node.neighbours(self.grid, self.allow_diagonal_paths, not self.nodes_as_circles):
             # If node has already been visited, skip
             if neighbour in self.visited:
                 continue
@@ -224,7 +129,3 @@ class Search:
 
         # We're done, so mark the node as visited
         self.visited.append(node)
-
-
-if __name__ == "__main__":
-    Grid().run()
