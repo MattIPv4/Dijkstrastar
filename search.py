@@ -16,10 +16,33 @@ class Search:
         self.width = 20
         self.height = 20
 
+        # Searching data
+        self.grid = None
+        self.start = None
+        self.end = None
+        self.visited = None
+        self.open = None
+        self.cheapest_node = None
+        self.reset()
+
+        # Pygame & loop control
+        pygame.init()
+        self.screen = pygame.display.set_mode((self.cols * self.width, self.rows * self.height))
+        self.running = False
+        self.searching = False
+
+    def reset(self):
         # Generate the grid of nodes
         self.grid = [[Node(_x, _y) for _y in range(self.rows)] for _x in range(self.cols)]
+        self.get_start()
+        self.get_end()
 
-        # Top quarter corner will be start
+        # Store what has been visited and what is currently open
+        self.visited = []
+        self.open = [self.start]
+        self.cheapest_node = None
+
+    def get_start(self):
         start_max_x = 0
         start_max_y = 0
         # start_max_x = int((self.cols - 1) / 4)
@@ -28,25 +51,14 @@ class Search:
         self.start.wall = False
         self.start.color = (0, 255, 0)
 
-        # Bottom quarter corner will be end
+    def get_end(self):
         end_min_x = self.cols - 1
         end_min_y = self.rows - 1
         # end_min_x = int((self.cols - 1) / 4 * 3)
         # end_min_y = int((self.rows - 1) / 4 * 3)
         self.end = self.grid[randint(end_min_x, self.cols - 1)][randint(end_min_y, self.rows - 1)]
         self.end.wall = False
-        self.end.color = (0, 0, 255)
-
-        # Store what has been visited and what is currently open
-        self.visited = []
-        self.open = [self.start]
-        self.cheapest_node = None
-
-        # Pygame & loop control
-        pygame.init()
-        self.screen = pygame.display.set_mode((self.cols * self.width, self.rows * self.height))
-        self.running = False
-        self.searching = False
+        self.end.color = (0, 200, 255)
 
     @staticmethod
     def heuristic(a, b):
@@ -71,22 +83,39 @@ class Search:
             if event.type == KEYDOWN:
                 if event.key == K_ESCAPE:
                     self.running = False
+                elif event.key == K_r:
+                    self.reset()
+                    self.searching = True
+                    return
             elif event.type == QUIT:
                 self.running = False
 
         # Do some drawing
         self.screen.fill((255, 255, 255))
         path = self.path()
+        path_color = (20, 255, 20) if self.cheapest_node is self.end else (255, 20, 20)
+
+        # Draw all the points
         for col in self.grid:
             for row in col:
                 color = None
                 if row in self.visited:
-                    color = (200, 50, 50)
+                    color = (200, 50, 50) if self.searching else (200, 150, 200)
                 if row in self.open:
-                    color = (50, 200, 50)
-                if row in path:
-                    color = (200, 50, 200)
+                    color = (50, 200, 50) if self.searching else (200, 255, 200)
+                if row in path and not self.searching:
+                    color = path_color
                 self.screen.blit(*row.show(self.width, self.height, color))
+
+        # Draw the path
+        if len(path) > 1:
+            color = (150, 50, 150) if self.searching else path_color
+            pygame.draw.lines(self.screen, color, False,
+                              [(node.x * self.width + self.width / 2,
+                                node.y * self.height + self.height / 2) for node
+                               in path], 2)
+
+        # Render
         pygame.display.flip()
 
     def search(self):

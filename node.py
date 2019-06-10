@@ -5,7 +5,7 @@ from pygame.locals import SRCALPHA
 
 
 class Node:
-    DIAGONALS_ENABLED = False
+    DIAGONALS_ENABLED = True
     DIAGONAL_WALL_CHECK = False
 
     def __init__(self, x, y):
