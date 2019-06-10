@@ -27,6 +27,9 @@
 I decided to refresh my memory on how Dijkstra and A* operate, ready for my final exam on them, I would write a Python
 script that runs both of them at the same time for a visual comparison.
 
+_Demonstration of the script, running on a 50x50 grid with a 0.25 chance of walls._
+_Magenta is the A* path, cyan is the Dijkstra path._
+
 [![Preview](preview.gif)](preview.gif)
 
 This started as just a PyGame simulation of A*, but then I decided to allow the heuristic to be forced to zero, which
