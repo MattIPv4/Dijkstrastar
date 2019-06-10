@@ -56,13 +56,14 @@ class Search:
 
         # Do some drawing
         self.screen.fill((255, 255, 255))
-        for x, col in enumerate(self.grid):
-            for y, row in enumerate(col):
-                surface = pygame.Surface((self.width, self.height), SRCALPHA)
-                rect = pygame.Rect(0, 0, self.width / 2, self.height / 2)
-                rect.center = (self.width / 2, self.height / 2)
-                pygame.draw.ellipse(surface, row.color, rect)
-                self.screen.blit(surface, (self.width * x, self.height * y))
+        for col in self.grid:
+            for row in col:
+                color = None
+                if row in self.visited:
+                    color = (200, 50, 50)
+                if row in self.open:
+                    color = (50, 200, 50)
+                self.screen.blit(*row.show(self.width, self.height, color))
         pygame.display.flip()
 
     def search(self):
