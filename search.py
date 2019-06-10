@@ -1,3 +1,4 @@
+from copy import deepcopy
 from math import sqrt, pow
 from random import randint
 
@@ -7,7 +8,7 @@ from pygame.locals import *
 from node import Node
 
 
-class Search:
+class Grid:
 
     def __init__(self):
         # Basic grid information
@@ -15,21 +16,21 @@ class Search:
         self.rows = 50
         self.width = 20
         self.height = 20
-
-        # Searching data
         self.grid = None
         self.start = None
         self.end = None
-        self.visited = None
-        self.open = None
-        self.cheapest_node = None
-        self.reset()
 
         # Pygame & loop control
         pygame.init()
         self.screen = pygame.display.set_mode((self.cols * self.width, self.rows * self.height))
         self.running = False
-        self.searching = False
+
+        # Searches
+        self.searches = [
+            Search(False, False, (0, 255, 255)),  # Dijkstra (cyan)
+            Search(False, True, (255, 0, 255))  # A* (magenta)
+        ]
+        self.reset()
 
     def reset(self):
         # Generate the grid of nodes
@@ -37,31 +38,101 @@ class Search:
         self.get_start()
         self.get_end()
 
-        # Store what has been visited and what is currently open
-        self.visited = []
-        self.open = [self.start]
-        self.cheapest_node = None
+        # Give searches their data (use copies so they don't touch each other)
+        for search in self.searches:
+            search.reset(deepcopy(self.grid), deepcopy(self.start), deepcopy(self.end))
 
     def get_start(self):
         start_max_x = 0
         start_max_y = 0
-        # start_max_x = int((self.cols - 1) / 4)
-        # start_max_y = int((self.rows - 1) / 4)
+        start_max_x = int((self.cols - 1) / 4)
+        start_max_y = int((self.rows - 1) / 4)
         self.start = self.grid[randint(0, start_max_x)][randint(0, start_max_y)]
         self.start.wall = False
-        self.start.color = (0, 255, 0)
 
     def get_end(self):
         end_min_x = self.cols - 1
         end_min_y = self.rows - 1
-        # end_min_x = int((self.cols - 1) / 4 * 3)
-        # end_min_y = int((self.rows - 1) / 4 * 3)
+        end_min_x = int((self.cols - 1) / 4 * 3)
+        end_min_y = int((self.rows - 1) / 4 * 3)
         self.end = self.grid[randint(end_min_x, self.cols - 1)][randint(end_min_y, self.rows - 1)]
         self.end.wall = False
-        self.end.color = (0, 200, 255)
 
-    @staticmethod
-    def heuristic(a, b):
+    def draw(self):
+        # Handle pygame events
+        for event in pygame.event.get():
+            if event.type == KEYDOWN:
+                if event.key == K_ESCAPE:
+                    self.running = False
+                elif event.key == K_r:
+                    self.reset()
+                    return
+            elif event.type == QUIT:
+                self.running = False
+
+        # Do some drawing
+        self.screen.fill((200, 200, 200))
+
+        # Draw all the points
+        for col in self.grid:
+            for row in col:
+                color = None
+                if row.wall:
+                    color = (0, 0, 0)
+                if row == self.start:
+                    color = (0, 255, 0)
+                if row == self.end:
+                    color = (0, 0, 255)
+                self.screen.blit(*row.show(self.width, self.height, color))
+
+        # Allow searches to draw their paths
+        for search in self.searches:
+            search.draw(self.screen, self.width, self.height)
+
+        # Render
+        pygame.display.flip()
+
+    def run(self):
+        self.running = True
+        while self.running:
+            for search in self.searches:
+                search.search()
+            self.draw()
+
+
+class Search:
+
+    def __init__(self, show_dots, astar=True, line_color=None):
+        # Grid data
+        self.grid = None
+        self.start = None
+        self.end = None
+        self.show_dots = show_dots
+        self.line_color = line_color
+
+        # Searching data
+        self.astar = astar
+        self.visited = None
+        self.open = None
+        self.cheapest_node = None
+        self.searching = None
+
+    def reset(self, grid, start, end):
+        # Save the grid data
+        self.grid = grid
+        self.start = start
+        self.end = end
+
+        # Store what has been visited and what is currently open
+        self.visited = []
+        self.open = [self.start]
+        self.cheapest_node = None
+        self.searching = True
+
+    def heuristic(self, a, b):
+        # If this is emulating dijkstra, use a heuristic of zero always
+        if not self.astar:
+            return 0
         # If can go diagonally, use true distance
         if Node.DIAGONALS_ENABLED:
             return sqrt(pow(a.x - b.x, 2) + pow(a.y - b.y, 2))
@@ -77,48 +148,37 @@ class Search:
             node = node.previous
         return temp
 
-    def draw(self):
-        # Handle pygame events
-        for event in pygame.event.get():
-            if event.type == KEYDOWN:
-                if event.key == K_ESCAPE:
-                    self.running = False
-                elif event.key == K_r:
-                    self.reset()
-                    self.searching = True
-                    return
-            elif event.type == QUIT:
-                self.running = False
-
-        # Do some drawing
-        self.screen.fill((255, 255, 255))
+    def draw(self, surface, node_width, node_height):
         path = self.path()
-        path_color = (20, 255, 20) if self.cheapest_node is self.end else (255, 20, 20)
+        path_color = (20, 255, 20) if self.cheapest_node == self.end else (255, 20, 20)
 
         # Draw all the points
-        for col in self.grid:
-            for row in col:
-                color = None
-                if row in self.visited:
-                    color = (200, 50, 50) if self.searching else (200, 150, 200)
-                if row in self.open:
-                    color = (50, 200, 50) if self.searching else (200, 255, 200)
-                if row in path and not self.searching:
-                    color = path_color
-                self.screen.blit(*row.show(self.width, self.height, color))
+        if self.show_dots:
+            for col in self.grid:
+                for row in col:
+                    color = None
+                    if row in self.visited:
+                        color = (200, 50, 50) if self.searching else (200, 150, 200)
+                    if row in self.open:
+                        color = (50, 200, 50) if self.searching else (200, 255, 200)
+                    if row in path and not self.searching:
+                        color = self.line_color or path_color
+                    if color:
+                        surface.blit(*row.show(node_width, node_height, color))
 
         # Draw the path
         if len(path) > 1:
-            color = (150, 50, 150) if self.searching else path_color
-            pygame.draw.lines(self.screen, color, False,
-                              [(node.x * self.width + self.width / 2,
-                                node.y * self.height + self.height / 2) for node
-                               in path], 2)
-
-        # Render
-        pygame.display.flip()
+            color = self.line_color or ((150, 50, 150) if self.searching else path_color)
+            pygame.draw.lines(surface, color, False,
+                              [(node.x * node_width + node_width / 2,
+                                node.y * node_height + node_height / 2) for node
+                               in path], 3)
 
     def search(self):
+        # Don't do anything if not searching
+        if not self.searching:
+            return
+
         # If no nodes to explore, no solution, abort
         if not self.open:
             print("No solution!")
@@ -133,7 +193,7 @@ class Search:
 
         # We're visiting the end, so we can abort
         node = self.cheapest_node
-        if node is self.end:
+        if node == self.end:
             print("End found!")
             self.searching = False
             return
@@ -165,14 +225,6 @@ class Search:
         # We're done, so mark the node as visited
         self.visited.append(node)
 
-    def run(self):
-        self.running = True
-        self.searching = True
-        while self.running:
-            if self.searching:
-                self.search()
-            self.draw()
-
 
 if __name__ == "__main__":
-    Search().run()
+    Grid().run()

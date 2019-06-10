@@ -17,20 +17,25 @@ class Node:
         self.previous = None
 
         self.wall = random() < 0.25
-        self.color = (0, 0, 0) if self.wall else (255, 255, 255)
 
         self.__neighbours = None
 
     def __str__(self):
         return "Node({},{}) Wall={}".format(self.x, self.y, self.wall)
 
-    def show(self, width, height, color=None):
-        if color is None:
-            color = self.color
+    def __eq__(self, other):
+        if other.x != self.x:
+            return False
+        if other.y != self.y:
+            return False
+        return True
+
+    def show(self, width, height, color):
         surface = pygame.Surface((width, height), SRCALPHA)
-        rect = pygame.Rect(0, 0, width / 2, height / 2)
-        rect.center = (width / 2, height / 2)
-        pygame.draw.ellipse(surface, color, rect)
+        if color is not None:
+            rect = pygame.Rect(0, 0, width / 2, height / 2)
+            rect.center = (width / 2, height / 2)
+            pygame.draw.ellipse(surface, color, rect)
         return surface, (width * self.x, height * self.y)
 
     def neighbours(self, grid):
