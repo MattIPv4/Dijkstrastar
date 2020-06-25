@@ -32,9 +32,7 @@ class Node:
         surface = pygame.Surface((width, height), SRCALPHA)
         if color is not None:
             if circle:
-                rect = pygame.Rect(0, 0, width / 2, height / 2)
-                rect.center = (width / 2, height / 2)
-                pygame.draw.ellipse(surface, color, rect)
+                pygame.draw.ellipse(surface, color, pygame.Rect(0, 0, width, height))
             else:
                 surface.fill(color)
         return surface, (width * self.x, height * self.y)

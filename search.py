@@ -74,10 +74,11 @@ class Search:
         # Draw the path
         if len(path) > 1:
             color = self.line_color or ((150, 50, 150) if self.searching else path_color)
+            size = (node_height + node_height) / 2 / 10 * 3
             pygame.draw.lines(surface, color, False,
                               [(node.x * node_width + node_width / 2,
                                 node.y * node_height + node_height / 2) for node
-                               in path], 3)
+                               in path], max(int(size), 1))
 
     def search(self):
         # Don't do anything if not searching
